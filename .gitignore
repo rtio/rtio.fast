@@ -1,3 +1,13 @@
 .DS_Store
 .stattic/
 .env*
+
+# Local working documents
+/docs/analysis/
+/docs/superpowers/plans/
+
+# Private deployment state and credentials
+.spacefast/
+*.pem
+*.key
+credentials.json

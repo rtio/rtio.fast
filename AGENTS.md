@@ -9,6 +9,7 @@ The real home is the blog at https://rtio.dev. Link there, don't duplicate it he
 - `index.html`: front page. Says this is a throwaway site and points to the blog and to `/experiments/`.
 - `experiments/index.html`: list of experiments. One `<li>` per experiment.
 - `pan/index.html`: Pan's Pasture, a single-file herding game. Self-contained.
+- `exposure/`: Exposure playground, a digital camera simulator. Static HTML and JavaScript modules; `model.test.mjs` is local-only.
 - `robots.txt` and `sitemap.xml`: for search engines. Spacefast does not generate them (both 404 otherwise).
 
 Static files only. No build step, no framework, no server code.
@@ -24,14 +25,15 @@ Each page carries its own inline CSS on purpose. Reuse the tokens in `index.html
 
 ## Publishing
 
-The Space lives under the `rtiodev` team, not `automattic`. Publish only the site files. The repo root also holds `README.md`, `AGENTS.md` and `.git`, which must not go live.
+Publish only the site files. Obtain the deployment team and Space target from
+private local configuration outside Git; never write their values into tracked
+files, examples, commit messages or public tool output. If the private target
+is unavailable, ask the user rather than reconstructing it from Git history.
+The repo root also holds documentation and Git metadata, which must not go live.
 
-```bash
-S="$TMPDIR/rtiofast-stage"
-rm -rf "$S" && mkdir -p "$S"
-cp -R index.html robots.txt sitemap.xml experiments pan "$S"/   # add new experiment folders here
-sf publish "$S" --team rtiodev --space spc_96c663e349164a8fb99b5f811eaf0be6 --publish-mode snapshot
-```
+Stage only `index.html`, `robots.txt`, `sitemap.xml`, `experiments/`, `pan/`,
+and the runtime files `exposure/index.html`, `exposure/app.mjs`,
+`exposure/model.mjs`, `exposure/scene.mjs`. Exclude tests and working documents.
 
 `snapshot` replaces the live files with exactly what you stage, so list every folder.
 
@@ -66,7 +68,11 @@ Keep expectations low: this is a throwaway site. Don't add analytics, cookie ban
 
 ## Rules
 
-- The repo is public. Never commit secrets, tokens, claim tokens or `.stattic/`.
+- Assume every file, branch, commit message and review artifact in this repository is public.
+- Never commit credentials, secrets, tokens, claim tokens, deployment account/team/Space identifiers, private URLs or local machine paths. Use clearly fake placeholders when examples need them.
+- Keep analysis and implementation plans local-only in the ignored `docs/analysis/` and `docs/superpowers/plans/` folders. Never force-add them.
+- Keep private configuration outside Git. Do not track `.stattic/`, `.spacefast/`, environment files, private keys or credential files.
+- Before every commit or push, inspect the exact staged files for sensitive values and unintended working documents. Ignoring a file does not untrack an existing copy or remove earlier commits.
 - Pages from Spacefast bots may include injected scripts (`sdk.js`, `remix-cta.js`) and `spacefast:*` comment markers. Strip the scripts when copying a page in.
 - Don't publish without being asked. Publishing changes a live site.
 - Commits follow Conventional Commits and reference no issue tracker.
