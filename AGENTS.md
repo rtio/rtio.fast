@@ -37,6 +37,33 @@ sf publish "$S" --team rtiodev --space spc_96c663e349164a8fb99b5f811eaf0be6 --pu
 
 Live URLs: https://rtio.fast/ (custom domain) and https://rtio-fast.space.fast/.
 
+## SEO
+
+Spacefast does not generate `sitemap.xml` or `robots.txt`; both URLs 404 unless the repo ships them. Everything below is hand-maintained static files.
+
+In place:
+
+- `robots.txt` allows all crawlers and points to the sitemap.
+- `sitemap.xml` lists every public page. Update it, with `lastmod`, whenever a page is added or changed.
+- Each page has a `<title>`, `<meta name="description">`, `<link rel="canonical">` with the absolute `https://rtio.fast/...` URL, Open Graph tags, a `twitter:card` and an icon.
+- Each page has one `<h1>` and `<html lang="en">`.
+- Pan's Pasture is indexable. The bot's `noindex` was removed on purpose.
+
+Not done yet, in rough order of value:
+
+1. Structured data (JSON-LD): `WebSite` and `Person` on the front page, `VideoGame` on `/pan/`.
+2. A 1200x630 social preview image, then `og:image` and `twitter:card` set to `summary_large_image`.
+3. A custom `404.html` with a link home. Spacefast serves its own 404 page otherwise.
+4. `rel="me"` links between rtio.fast, rtio.dev, X and GitHub, so the sites are tied to one identity.
+5. `apple-touch-icon` and a web manifest, so the game can be added to a phone home screen.
+
+Outside the repo:
+
+- Verify rtio.fast in Google Search Console and Bing Webmaster Tools, then submit `https://rtio.fast/sitemap.xml`. This needs Rafael's login.
+- Link to rtio.fast from rtio.dev. Backlinks matter more than any tag for a new domain.
+
+Keep expectations low: this is a throwaway site. Don't add analytics, cookie banners or tracking for SEO.
+
 ## Rules
 
 - The repo is public. Never commit secrets, tokens, claim tokens or `.stattic/`.
