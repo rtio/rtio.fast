@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Experiments - rtio.fast</title>
+<meta name="description" content="Things I build on rtio.fast and may delete later.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --fog:#e6ecf1; --ink:#14202b; --paper:#fbfcfd; --blue:#1d4ed8; --tape:#c9d6e2; --shadow:#b7c4d1;
+}
+@media (prefers-color-scheme:dark){
+  :root{--fog:#10171e; --ink:#e8eef3; --paper:#1a242d; --blue:#8ab0ff; --tape:#2f3d4a; --shadow:#0a0f14}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  min-height:100vh; background:var(--fog); color:var(--ink);
+  font-family:"Bricolage Grotesque",system-ui,sans-serif;
+  display:grid; place-items:center; padding:24px 16px;
+}
+main{
+  position:relative; width:min(100%,38rem);
+  background:var(--paper); padding:3rem 2.5rem 2.5rem;
+  transform:rotate(-1.2deg);
+  box-shadow:6px 8px 0 var(--shadow);
+}
+main::before{
+  content:""; position:absolute; top:-14px; left:50%;
+  width:7rem; height:28px; background:var(--tape); opacity:.85;
+  transform:translateX(-50%) rotate(2deg);
+}
+h1{
+  margin:0 0 1.25rem; font-weight:800; line-height:.98; letter-spacing:-.03em;
+  font-size:clamp(2.6rem,9vw,4.5rem);
+}
+p{margin:0 0 1rem; font-size:1.125rem; line-height:1.55; max-width:34em}
+a.go{
+  display:inline-block; margin-top:.75rem; padding:.7rem 1.1rem;
+  background:var(--blue); color:#fff; font-weight:800; text-decoration:none;
+}
+@media (prefers-color-scheme:dark){a.go{color:#10171e}}
+a.go:hover{text-decoration:underline; text-underline-offset:3px}
+p a{color:var(--blue)}
+a:focus-visible{outline:3px solid var(--ink); outline-offset:3px}
+.list{list-style:none;margin:0 0 1.5rem;padding:0}
+.list li{margin:0 0 1.25rem}
+.list a{font-weight:800;font-size:1.35rem}
+.list span{display:block;margin-top:.25rem;line-height:1.5}
+small{display:block; margin-top:2rem; opacity:.7}
+@media (max-width:480px){main{padding:2.5rem 1.5rem 2rem}}
+@media (prefers-reduced-motion:no-preference){
+  main{animation:land .5s cubic-bezier(.2,.8,.3,1.1) both}
+  @keyframes land{from{transform:rotate(-6deg) translateY(-24px);opacity:0}}
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Experiments</h1>
+  <p>Small things I build here and may delete later.</p>
+  <ul class="list">
+    <li>
+      <a href="https://rtio.fast/pan/">Pan's Pasture</a>
+      <span>Herd 10 sheep into the pen in 60 seconds with my border collie. 16-bit, chiptune, works on phones.</span>
+    </li>
+  </ul>
+  <a class="go" href="/">Back to rtio.fast</a>
+</main>
+</body>
+</html>

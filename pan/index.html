@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Pan's Pasture: a 16-bit herding game</title>
+<meta name="description" content="Help Pan the border collie herd 10 sheep into the pen in 60 seconds. SNES-style, chiptune, phone-friendly.">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1b1840;--ink:#f8f4e3;--red:#d8324a;--blue:#3d55c8;--green:#2fa85a;--yellow:#f2c230;--gray:#b8b5c9}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Press Start 2P",ui-monospace,monospace;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+body{background:radial-gradient(ellipse at top,#2c2870,#141233 70%)}
+#app{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;height:100%;padding:max(8px,env(safe-area-inset-top)) 8px max(6px,env(safe-area-inset-bottom))}
+h1{font-size:12px;margin:2px 0 8px;letter-spacing:1px;color:var(--yellow);text-shadow:2px 2px 0 #000}
+h1 span{color:var(--ink)}
+#screen{position:relative;border:4px solid #0b0a1f;border-radius:6px;box-shadow:0 0 0 4px #5a5794,0 10px 30px rgba(0,0,0,.6);background:#000;line-height:0}
+canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(14,12,40,.72);text-align:center;line-height:1.6;padding:12px}
+.overlay.hidden{display:none}
+.overlay h2{margin:0;font-size:clamp(14px,4.4vw,22px);color:var(--yellow);text-shadow:3px 3px 0 #000}
+.overlay p{margin:0;font-size:clamp(8px,2.4vw,11px);color:var(--ink);max-width:34ch}
+.overlay .big{font-size:clamp(12px,3.6vw,16px);color:#fff}
+.btn{font-family:inherit;font-size:clamp(9px,2.6vw,12px);color:#fff;background:var(--blue);border:0;border-radius:6px;padding:12px 14px;box-shadow:0 4px 0 #1d2a6e;cursor:pointer}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #1d2a6e}
+.btn.red{background:var(--red);box-shadow:0 4px 0 #7a1424}
+.btn.green{background:var(--green);box-shadow:0 4px 0 #13582c}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.blink{animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+#pad{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:520px;margin-top:12px;gap:10px;flex:0 0 auto}
+#stick{position:relative;width:128px;height:128px;border-radius:50%;background:#2a2760;box-shadow:inset 0 0 0 4px #4a4790,inset 0 6px 0 rgba(255,255,255,.06);touch-action:none}
+#stick::before,#stick::after{content:"";position:absolute;background:#3a3780;left:50%;top:50%;transform:translate(-50%,-50%)}
+#stick::before{width:34px;height:96px;border-radius:4px}
+#stick::after{width:96px;height:34px;border-radius:4px}
+#knob{position:absolute;left:50%;top:50%;width:50px;height:50px;margin:-25px 0 0 -25px;border-radius:50%;background:#77749f;box-shadow:0 4px 0 #3a3770,inset 0 3px 0 rgba(255,255,255,.25);z-index:2}
+#mid{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:7px;color:var(--gray);text-align:center;line-height:1.7}
+.pill{font-family:inherit;font-size:7px;color:#ddd;background:#3d3a74;border:0;border-radius:20px;padding:6px 10px;cursor:pointer}
+#bark{width:104px;height:104px;border-radius:50%;border:0;background:var(--red);color:#fff;font-family:inherit;font-size:12px;box-shadow:0 6px 0 #7a1424,inset 0 4px 0 rgba(255,255,255,.25);cursor:pointer;touch-action:none;position:relative;overflow:hidden}
+#bark.press{transform:translateY(4px);box-shadow:0 2px 0 #7a1424}
+#bark i{position:absolute;left:0;bottom:0;width:100%;background:rgba(0,0,0,.35);height:0}
+#bark small{display:block;font-size:6px;margin-top:6px;opacity:.85}
+footer{margin-top:auto;padding-top:8px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:11px;color:#9d9ac4;text-align:center;line-height:1.5}
+footer a{color:#cfcdf0}
+@media (min-width:900px){#pad{max-width:640px}}
+</style>
+<!-- spacefast:head -->
+<link rel="icon" href="data:image/svg+xml,%3C%73%76%67%20%78%6D%6C%6E%73%3D%22%68%74%74%70%3A%2F%2F%77%77%77%2E%77%33%2E%6F%72%67%2F%32%30%30%30%2F%73%76%67%22%20%76%69%65%77%42%6F%78%3D%22%30%20%30%20%36%34%20%36%34%22%3E%3C%72%65%63%74%20%77%69%64%74%68%3D%22%36%34%22%20%68%65%69%67%68%74%3D%22%36%34%22%20%72%78%3D%22%31%34%22%20%66%69%6C%6C%3D%22%68%73%6C%28%31%30%39%20%36%35%25%20%33%32%25%29%22%2F%3E%3C%74%65%78%74%20%78%3D%22%33%32%22%20%79%3D%22%34%33%22%20%74%65%78%74%2D%61%6E%63%68%6F%72%3D%22%6D%69%64%64%6C%65%22%20%66%6F%6E%74%2D%66%61%6D%69%6C%79%3D%22%73%79%73%74%65%6D%2D%75%69%2C%73%61%6E%73%2D%73%65%72%69%66%22%20%66%6F%6E%74%2D%73%69%7A%65%3D%22%33%36%22%20%66%6F%6E%74%2D%77%65%69%67%68%74%3D%22%37%30%30%22%20%66%69%6C%6C%3D%22%77%68%69%74%65%22%3E%50%3C%2F%74%65%78%74%3E%3C%2F%73%76%67%3E">
+<meta property="og:title" content="Pan&#039;s Pasture: a 16-bit herding game">
+<meta name="twitter:title" content="Pan&#039;s Pasture: a 16-bit herding game">
+<!-- /spacefast:head -->
+</head>
+<body>
+<div id="app">
+  <h1>PAN'S <span>PASTURE</span></h1>
+  <div id="screen">
+    <canvas id="c" width="256" height="224"></canvas>
+    <div class="overlay" id="title">
+      <h2>PAN'S PASTURE</h2>
+      <p>Pan the border collie has 60 seconds to herd 10 sheep into the pen.</p>
+      <p>Move with the D-pad, arrows/WASD, or drag on the field. BARK scatters sheep away from Pan.</p>
+      <button class="btn red blink" id="startBtn">PRESS START</button>
+      <p id="bestTitle" style="color:#f2c230"></p>
+    </div>
+    <div class="overlay hidden" id="end">
+      <h2 id="endHead">GOOD DOG!</h2>
+      <p class="big" id="endScore"></p>
+      <p id="endBest" style="color:#f2c230"></p>
+      <div class="row">
+        <button class="btn green" id="againBtn">PLAY AGAIN</button>
+        <button class="btn" id="shareBtn">CHALLENGE</button>
+      </div>
+      <p id="shareMsg" style="min-height:1.6em;color:#9fe3b4"></p>
+    </div>
+  </div>
+  <div id="pad">
+    <div id="stick"><div id="knob"></div></div>
+    <div id="mid">
+      <button class="pill" id="muteBtn">♪ MUSIC ON</button>
+      <span>ARROWS / WASD<br>SPACE = BARK</span>
+    </div>
+    <button id="bark">BARK!<small>WOOF</small><i id="cool"></i></button>
+  </div>
+  <footer>Made for <a href="https://x.com/rtio_dev">@rtio_dev</a> and Pan by <a href="https://x.com/SpacefastBot">@SpacefastBot</a> with Grok Bot · <a href="https://spacefast.com">Spacefast</a></footer>
+</div>
+<script>
+(()=>{
+const W=256,H=224,TOP=18;
+const cv=document.getElementById('c'),g=cv.getContext('2d');g.imageSmoothingEnabled=false;
+const $=id=>document.getElementById(id);
+// ---------- layout ----------
+function fit(){
+  const pad=$('pad').offsetHeight+70+($('app').querySelector('footer').offsetHeight||0);
+  const s=Math.max(1,Math.min((innerWidth-24)/W,(innerHeight-pad)/H));
+  cv.style.width=Math.floor(W*s)+'px';cv.style.height=Math.floor(H*s)+'px';
+}
+addEventListener('resize',fit);
+// ---------- pen ----------
+const P={x0:176,x1:246,y0:30,y1:104,g0:46,g1:88};
+// ---------- rng / background ----------
+let seed=7;const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+const bg=document.createElement('canvas');bg.width=W;bg.height=H;
+(function paintBg(){
+  const b=bg.getContext('2d');
+  for(let y=0;y<H;y+=8)for(let x=0;x<W;x+=8){b.fillStyle=((x+y)/8)%2?'#5cb84a':'#54ae43';b.fillRect(x,y,8,8)}
+  for(let i=0;i<260;i++){const x=rnd()*W|0,y=TOP+rnd()*(H-TOP)|0;b.fillStyle=rnd()<.5?'#3f9136':'#73cc5c';b.fillRect(x,y,1,2);b.fillRect(x+2,y+1,1,1)}
+  // dirt path
+  b.fillStyle='#c9a36b';
+  for(let x=0;x<P.x0;x++){const y=64+Math.sin(x/22)*6|0;b.fillRect(x,y,1,7)}
+  b.fillStyle='#b38a55';for(let x=0;x<P.x0;x+=5){const y=64+Math.sin(x/22)*6|0;b.fillRect(x,y+3,2,1)}
+  // flowers
+  const fl=['#f8f4e3','#f2c230','#e86a8e','#9fb8ff'];
+  for(let i=0;i<46;i++){const x=rnd()*W|0,y=TOP+6+rnd()*(H-TOP-8)|0;if(x>P.x0-4&&y<P.y1+6)continue;b.fillStyle=fl[i%4];b.fillRect(x,y,2,2);b.fillStyle='#2d7a2a';b.fillRect(x,y+2,1,2)}
+  // pen floor (straw)
+  b.fillStyle='#d8b65a';b.fillRect(P.x0,P.y0,P.x1-P.x0,P.y1-P.y0);
+  for(let i=0;i<160;i++){b.fillStyle=rnd()<.5?'#c49c3e':'#ead07a';b.fillRect(P.x0+rnd()*(P.x1-P.x0)|0,P.y0+rnd()*(P.y1-P.y0)|0,2,1)}
+  // trees/bushes along bottom & left edge
+  const bush=(x,y)=>{b.fillStyle='#246b2a';b.fillRect(x-6,y-3,12,7);b.fillRect(x-4,y-6,8,12);b.fillStyle='#348a37';b.fillRect(x-4,y-4,6,5);b.fillStyle='#4fae4b';b.fillRect(x-3,y-4,2,2)};
+  [[12,212],[60,216],[110,214],[150,218],[214,212],[244,206],[6,150],[4,100]].forEach(p=>bush(p[0],p[1]));
+  // pond
+  b.fillStyle='#2f6fb8';b.fillRect(118,150,30,14);b.fillRect(114,153,38,8);b.fillStyle='#5aa0e6';b.fillRect(122,153,10,2);b.fillRect(136,158,8,1);
+  // sign
+  b.fillStyle='#7a4a24';b.fillRect(160,56,2,12);b.fillStyle='#a8733e';b.fillRect(152,50,18,8);b.fillStyle='#3a2210';b.fillRect(154,53,14,1);b.fillRect(154,55,10,1);
+})();
+const POND={x0:114,x1:152,y0:150,y1:164};
+// ---------- entities ----------
+let dog,sheep,state='title',timeLeft=60,barkT=0,barkCD=0,penned=0,shake=0,goT=0,particles=[],t=0,result=null;
+function reset(){
+  dog={x:40,y:44,vx:0,vy:0,f:1,a:0};
+  sheep=[];seed=(Date.now()%100000)+11;
+  for(let i=0;i<10;i++){sheep.push({x:40+rnd()*110,y:110+rnd()*90,vx:0,vy:0,wa:rnd()*6.28,f:1,a:rnd()*9,in:false,bl:0})}
+  sheep.forEach(s=>{if(s.x>POND.x0-6&&s.x<POND.x1+6&&s.y>POND.y0-6&&s.y<POND.y1+6)s.y=200});
+  timeLeft=60;barkT=0;barkCD=0;penned=0;particles=[];result=null;goT=1.2;
+}
+reset();
+// ---------- input ----------
+const keys={};
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(e.key.toLowerCase()))e.preventDefault();if(e.key===' ')bark();if(e.key==='Enter'&&state!=='play')start()});
+addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
+let stick={x:0,y:0,id:null};const st=$('stick'),kn=$('knob');
+function stickMove(e){const r=st.getBoundingClientRect();let x=(e.clientX-r.left-r.width/2)/(r.width/2),y=(e.clientY-r.top-r.height/2)/(r.height/2);const m=Math.hypot(x,y);if(m>1){x/=m;y/=m}stick.x=x;stick.y=y;kn.style.transform=`translate(${x*38}px,${y*38}px)`}
+st.addEventListener('pointerdown',e=>{stick.id=e.pointerId;st.setPointerCapture(e.pointerId);stickMove(e);audioInit()});
+st.addEventListener('pointermove',e=>{if(e.pointerId===stick.id)stickMove(e)});
+const stickUp=e=>{if(e.pointerId===stick.id){stick.id=null;stick.x=stick.y=0;kn.style.transform=''}};
+st.addEventListener('pointerup',stickUp);st.addEventListener('pointercancel',stickUp);
+let target=null,tid=null;
+function cvPt(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H}}
+cv.addEventListener('pointerdown',e=>{tid=e.pointerId;cv.setPointerCapture(e.pointerId);target=cvPt(e);audioInit()});
+cv.addEventListener('pointermove',e=>{if(e.pointerId===tid)target=cvPt(e)});
+const cvUp=e=>{if(e.pointerId===tid){tid=null;target=null}};cv.addEventListener('pointerup',cvUp);cv.addEventListener('pointercancel',cvUp);
+const bk=$('bark');
+bk.addEventListener('pointerdown',e=>{e.preventDefault();bk.classList.add('press');audioInit();bark()});
+['pointerup','pointercancel','pointerleave'].forEach(n=>bk.addEventListener(n,()=>bk.classList.remove('press')));
+$('startBtn').onclick=start;$('againBtn').onclick=start;
+$('muteBtn').onclick=()=>{music=!music;$('muteBtn').textContent=music?'♪ MUSIC ON':'♪ MUSIC OFF';if(mg)mg.gain.value=music?.16:0;try{localStorage.panMusic=music?1:0}catch(e){}};
+$('shareBtn').onclick=async()=>{
+  const txt=result.win?`Pan and I herded 10/10 sheep with ${result.left.toFixed(1)}s to spare in Pan's Pasture 🐑🐕 Beat that:`:`Pan and I penned ${result.n}/10 sheep in Pan's Pasture 🐑🐕 Bet you can't do better:`;
+  const url=location.href.split('#')[0];
+  try{if(navigator.share){await navigator.share({title:"Pan's Pasture",text:txt,url});return}}catch(e){if(e.name==='AbortError')return}
+  try{await navigator.clipboard.writeText(txt+' '+url);$('shareMsg').textContent='Copied! Send it to your rival.'}catch(e){$('shareMsg').textContent=txt+' '+url}
+};
+function best(){try{return JSON.parse(localStorage.panBest||'null')}catch(e){return null}}
+function bestText(){const b=best();if(!b)return'';return b.win?`BEST: 10/10 · ${b.left.toFixed(1)}s left`:`BEST: ${b.n}/10 sheep`}
+$('bestTitle').textContent=bestText();
+// ---------- game flow ----------
+function start(){audioInit();reset();state='play';$('title').classList.add('hidden');$('end').classList.add('hidden');$('shareMsg').textContent='';sfx('go')}
+function finish(win){
+  state='end';result={win,n:penned,left:Math.max(0,timeLeft)};
+  const b=best();const better=!b||(win&&(!b.win||result.left>b.left))||(!win&&!b.win&&penned>b.n);
+  if(better)try{localStorage.panBest=JSON.stringify(result)}catch(e){}
+  $('endHead').textContent=win?'GOOD DOG!':'TIME\'S UP!';
+  $('endScore').textContent=win?`10/10 SHEEP · ${result.left.toFixed(1)}s LEFT`:`${penned}/10 SHEEP PENNED`;
+  $('endBest').textContent=better?'NEW BEST! ★':bestText();
+  $('end').classList.remove('hidden');$('bestTitle').textContent=bestText();
+  sfx(win?'win':'lose');
+}
+function bark(){if(state!=='play'||barkCD>0)return;barkT=.55;barkCD=1.1;shake=.18;sfx('bark');
+  for(let i=0;i<8;i++){const a=i/8*6.28;particles.push({x:dog.x,y:dog.y-4,vx:Math.cos(a)*50,vy:Math.sin(a)*50,l:.35,c:'#fff'})}}
+// ---------- physics helpers ----------
+function moveBlocked(e,nx,ny,isDog){
+  // returns [x,y] after fence collision; fence = pen rect, opening on left wall between g0..g1 (sheep only)
+  let x=e.x,y=e.y;
+  const inY=yy=>yy>P.y0-2&&yy<P.y1+2, inX=xx=>xx>P.x0-2&&xx<P.x1+2;
+  const gap=yy=>!isDog&&yy>P.g0+2&&yy<P.g1-2;
+  // x axis
+  let tx=nx;
+  if(inY(y)){
+    if((x<=P.x0&&tx>P.x0)||(x>=P.x0&&tx<P.x0)){if(!gap(y)||(e.in&&tx<P.x0+5))tx=x}
+    if((x<=P.x1&&tx>P.x1)||(x>=P.x1&&tx<P.x1))tx=x;
+  }
+  if(e.in)tx=Math.max(P.x0+5,Math.min(P.x1-4,tx));
+  x=tx;
+  let ty=ny;
+  if(inX(x)&&!(x<P.x0&&!e.in)){
+    if((y<=P.y0&&ty>P.y0)||(y>=P.y0&&ty<P.y0))ty=y;
+    if((y<=P.y1&&ty>P.y1)||(y>=P.y1&&ty<P.y1))ty=y;
+  }
+  if(e.in)ty=Math.max(P.y0+6,Math.min(P.y1-3,ty));
+  y=ty;
+  // pond
+  if(x>POND.x0&&x<POND.x1&&y>POND.y0&&y<POND.y1){x=e.x;y=e.y}
+  x=Math.max(5,Math.min(W-5,x));y=Math.max(TOP+8,Math.min(H-4,y));
+  return[x,y];
+}
+// ---------- update ----------
+function update(dt){
+  t+=dt;particles=particles.filter(p=>(p.l-=dt)>0);particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g?p.g*dt:0});
+  shake=Math.max(0,shake-dt);
+  if(state!=='play')return;
+  goT=Math.max(0,goT-dt);
+  const prevSec=Math.ceil(timeLeft);timeLeft-=dt;
+  if(Math.ceil(timeLeft)<prevSec&&timeLeft<=10&&timeLeft>0)sfx('tick');
+  barkT=Math.max(0,barkT-dt);barkCD=Math.max(0,barkCD-dt);
+  // dog
+  let ix=(keys.arrowright||keys.d?1:0)-(keys.arrowleft||keys.a?1:0)+stick.x,iy=(keys.arrowdown||keys.s?1:0)-(keys.arrowup||keys.w?1:0)+stick.y;
+  if(target&&!stick.id&&!ix&&!iy){const dx=target.x-dog.x,dy=target.y-dog.y,d=Math.hypot(dx,dy);if(d>3){ix=dx/d*Math.min(1,d/12);iy=dy/d*Math.min(1,d/12)}}
+  const m=Math.hypot(ix,iy);if(m>1){ix/=m;iy/=m}
+  const SP=78;dog.vx+=(ix*SP-dog.vx)*Math.min(1,dt*12);dog.vy+=(iy*SP-dog.vy)*Math.min(1,dt*12);
+  [dog.x,dog.y]=moveBlocked(dog,dog.x+dog.vx*dt,dog.y+dog.vy*dt,true);
+  if(Math.abs(dog.vx)>4)dog.f=dog.vx>0?1:-1;dog.a+=Math.hypot(dog.vx,dog.vy)*dt*.25;
+  // sheep
+  let cx=0,cy=0,cn=0;sheep.forEach(s=>{if(!s.in){cx+=s.x;cy+=s.y;cn++}});if(cn){cx/=cn;cy/=cn}
+  sheep.forEach(s=>{
+    let ax=0,ay=0;
+    s.wa+=(rnd()-.5)*dt*3;
+    if(s.in){ax+=Math.cos(s.wa)*5;ay+=Math.sin(s.wa)*5}
+    else{
+      ax+=Math.cos(s.wa)*7;ay+=Math.sin(s.wa)*7;
+      const dx=s.x-dog.x,dy=s.y-dog.y,d=Math.hypot(dx,dy)||1;
+      if(d<46){const k=(46-d)/46;ax+=dx/d*k*95;ay+=dy/d*k*95}
+      if(barkT>0&&d<92){const k=1-d/92;ax+=dx/d*k*170;ay+=dy/d*k*170}
+      if(cn>1){const ddx=cx-s.x,ddy=cy-s.y,dd=Math.hypot(ddx,ddy)||1;if(dd>12){ax+=ddx/dd*Math.min(18,dd*.35);ay+=ddy/dd*Math.min(18,dd*.35)}}
+      // gentle pull toward gate mouth when close, so the opening "sucks in" nearby sheep
+      const gx=P.x0+8,gy=(P.g0+P.g1)/2,gdx=gx-s.x,gdy=gy-s.y,gd=Math.hypot(gdx,gdy);
+      if(gd<40){ax+=gdx/gd*30;ay+=gdy/gd*30}
+      if(s.x<14)ax+=(14-s.x)*4;if(s.x>W-14)ax-=(s.x-W+14)*4;if(s.y<TOP+16)ay+=(TOP+16-s.y)*4;if(s.y>H-14)ay-=(s.y-H+14)*4;
+      // funnel: sheep pressed against the outside of the fence slide toward the gate
+      if(s.x<P.x0+1&&s.x>P.x0-16&&s.y>P.y0-4&&s.y<P.y1+4&&(s.y<P.g0+4||s.y>P.g1-4)){ay+=(gy-s.y>0?1:-1)*40}
+      if(s.x>=P.x0-4&&(s.y<P.y0+2||s.y>P.y1-2)){ax-=45;ay+=s.y<P.y0+2?8:0}
+    }
+    sheep.forEach(o=>{if(o===s)return;const dx=s.x-o.x,dy=s.y-o.y,d=Math.hypot(dx,dy);if(d<9&&d>0){ax+=dx/d*(9-d)*7;ay+=dy/d*(9-d)*7}});
+    const max=s.in?10:58;
+    s.vx+=(ax-s.vx)*Math.min(1,dt*3);s.vy+=(ay-s.vy)*Math.min(1,dt*3);
+    const sp=Math.hypot(s.vx,s.vy);if(sp>max){s.vx*=max/sp;s.vy*=max/sp}
+    const [nx,ny]=moveBlocked(s,s.x+s.vx*dt,s.y+s.vy*dt,false);
+    if(nx===s.x)s.vx*=-.4;if(ny===s.y)s.vy*=-.4;
+    s.x=nx;s.y=ny;
+    if(Math.abs(s.vx)>3)s.f=s.vx>0?1:-1;s.a+=sp*dt*.3;
+    if(!s.in&&s.x>P.x0+6&&s.y>P.y0&&s.y<P.y1&&s.x<P.x1){s.in=true;penned++;s.bl=1;sfx('pen');
+      for(let i=0;i<10;i++)particles.push({x:s.x,y:s.y-6,vx:(rnd()-.5)*60,vy:-30-rnd()*40,g:120,l:.6,c:i%2?'#f2c230':'#fff'})}
+    s.bl=Math.max(0,s.bl-dt);
+  });
+  if(penned>=10)finish(true);else if(timeLeft<=0){timeLeft=0;finish(false)}
+}
+// ---------- draw ----------
+const px=(x,y,w,h,c)=>{g.fillStyle=c;g.fillRect(x|0,y|0,w,h)};
+function drawFence(){
+  const post=(x,y)=>{px(x-1,y-6,3,8,'#6b3f1d');px(x-1,y-6,1,8,'#9a6334')};
+  // top
+  for(let x=P.x0;x<=P.x1;x+=7)post(x,P.y0);
+  px(P.x0,P.y0-4,P.x1-P.x0,2,'#a8733e');px(P.x0,P.y0-1,P.x1-P.x0,1,'#6b3f1d');
+  // right
+  for(let y=P.y0;y<=P.y1;y+=7)post(P.x1,y);px(P.x1-1,P.y0,2,P.y1-P.y0,'#8b5a2b');
+  // left (with gate gap)
+  for(let y=P.y0;y<=P.g0;y+=7)post(P.x0,y);for(let y=P.g1;y<=P.y1;y+=7)post(P.x0,y);
+  px(P.x0-1,P.y0,2,P.g0-P.y0,'#8b5a2b');px(P.x0-1,P.g1,2,P.y1-P.g1,'#8b5a2b');
+  // open gate leaf
+  px(P.x0-14,P.g0-2,14,2,'#a8733e');px(P.x0-14,P.g0+2,14,1,'#6b3f1d');post(P.x0-14,P.g0);
+}
+function drawFenceFront(){
+  for(let x=P.x0;x<=P.x1;x+=7){px(x-1,P.y1-6,3,8,'#6b3f1d');px(x-1,P.y1-6,1,8,'#9a6334')}
+  px(P.x0,P.y1-4,P.x1-P.x0,2,'#a8733e');px(P.x0,P.y1-1,P.x1-P.x0,1,'#6b3f1d');
+}
+function drawSheep(s){
+  const x=s.x|0,y=s.y|0,f=s.f,leg=(Math.sin(s.a)*1.5)|0,hop=s.bl>0?-(Math.sin(s.bl*12)*3|0):0;
+  px(x-6,y+1,12,2,'rgba(0,0,0,.18)');
+  const yy=y+hop;
+  px(x-4,yy-1,1,3+leg,'#2b2433');px(x+3,yy-1,1,3-leg,'#2b2433');px(x-2,yy-1,1,3-leg,'#2b2433');px(x+1,yy-1,1,3+leg,'#2b2433');
+  px(x-6,yy-7,12,6,'#d9d6e6');px(x-5,yy-9,10,9,'#d9d6e6');px(x-5,yy-8,9,6,'#ffffff');px(x-3,yy-9,3,1,'#ffffff');
+  px(x-4,yy-6,2,1,'#e9e7f2');px(x+1,yy-5,2,1,'#e9e7f2');
+  const hx=f>0?x+4:x-8;px(hx,yy-7,4,4,'#2b2433');px(f>0?hx+1:hx+2,yy-6,1,1,'#fff');px(f>0?hx-1:hx+4,yy-8,1,2,'#2b2433');
+  if(s.in&&Math.sin(t*2+s.wa)>.97){g.fillStyle='#fff';g.font='6px "Press Start 2P",monospace';g.fillText('baa',x-6,yy-12)}
+}
+function drawDog(){
+  const x=dog.x|0,y=dog.y|0,f=dog.f,mv=Math.hypot(dog.vx,dog.vy)>8,leg=mv?(Math.sin(dog.a*4)*2)|0:0;
+  px(x-7,y+1,14,2,'rgba(0,0,0,.2)');
+  // legs
+  px(x-5,y-2,2,3+leg,'#1a1a22');px(x+3,y-2,2,3-leg,'#1a1a22');px(x-5,y+1+leg,2,1,'#fff');px(x+3,y+1-leg,2,1,'#fff');
+  // body
+  px(x-6,y-7,12,6,'#1a1a22');px(x-5,y-8,9,1,'#2c2c38');
+  // white chest + belly
+  const cx=f>0?x+2:x-5;px(cx,y-6,3,5,'#f4f1ea');px(x-3,y-2,6,1,'#f4f1ea');
+  // tail
+  const tw=Math.sin(t*14)*1.5|0, tx=f>0?x-9:x+6;px(tx,y-9+tw,3,2,'#1a1a22');px(f>0?tx-1:tx+2,y-10+tw,2,2,'#f4f1ea');
+  // head
+  const hx=f>0?x+4:x-10;px(hx,y-12,6,6,'#1a1a22');px(f>0?hx+2:hx+1,y-12,2,6,'#f4f1ea');
+  px(f>0?hx+5:hx-2,y-9,3,3,'#f4f1ea');px(f>0?hx+7:hx-2,y-9,1,1,'#1a1a22');
+  px(f>0?hx+1:hx+4,y-14,2,3,'#1a1a22');px(f>0?hx+4:hx+1,y-14,2,2,'#1a1a22');
+  px(f>0?hx+4:hx+1,y-10,1,1,'#fff');
+  if(mv||barkT>0)px(f>0?hx+6:hx-1,y-7,2,2,'#e5486a');
+  // red collar
+  px(f>0?hx:hx+4,y-7,2,2,'#d8324a');
+  // name tag
+  if(state==='play'&&goT>0){g.fillStyle='#f2c230';g.font='6px "Press Start 2P",monospace';g.fillText('PAN',x-8,y-18)}
+  if(barkT>0){
+    g.strokeStyle='rgba(255,255,255,'+(barkT/.55)+')';g.lineWidth=1;g.beginPath();g.arc(x,y-5,(0.55-barkT)*150,0,6.28);g.stroke();
+    px(x-14,y-28,30,10,'#fff');px(x-12,y-30,26,14,'#fff');px(x-2,y-17,4,3,'#fff');
+    g.fillStyle='#d8324a';g.font='6px "Press Start 2P",monospace';g.fillText('WOOF',x-11,y-20);
+  }
+}
+function txt(s,x,y,c,sz){g.font=(sz||8)+'px "Press Start 2P",monospace';g.fillStyle='#000';g.fillText(s,x+1,y+1);g.fillStyle=c;g.fillText(s,x,y)}
+function drawHud(){
+  px(0,0,W,TOP,'#22205a');px(0,TOP-2,W,2,'#0b0a1f');px(0,0,W,1,'#4a4790');
+  const tl=Math.ceil(timeLeft);
+  txt('TIME',6,12,'#b8b5c9');txt(String(tl).padStart(2,'0'),42,12,tl<=10&&(t*4|0)%2?'#d8324a':'#f8f4e3');
+  // sheep icons
+  for(let i=0;i<10;i++){const x=104+i*9,c=i<penned?'#ffffff':'#4a4790';px(x,6,7,5,c);px(x+1,5,5,7,c);px(x+5,7,3,3,i<penned?'#2b2433':'#3a3780')}
+  txt(penned+'/10',204,12,'#f2c230');
+}
+function draw(){
+  g.save();if(shake>0)g.translate((rnd()-.5)*3|0,(rnd()-.5)*3|0);
+  g.drawImage(bg,0,0);
+  drawFence();
+  // depth sort
+  const ents=[...sheep.map(s=>({y:s.y,d:()=>drawSheep(s)})),{y:dog.y,d:drawDog}].sort((a,b)=>a.y-b.y);
+  const behind=ents.filter(e=>e.y<=P.y1),front=ents.filter(e=>e.y>P.y1);
+  behind.forEach(e=>e.d());drawFenceFront();front.forEach(e=>e.d());
+  particles.forEach(p=>px(p.x,p.y,2,2,p.c));
+  // pen label
+  txt('PEN',P.x0+22,P.y0+16,'#7a5a1e',6);
+  if(state==='play'&&goT>0){txt(goT>.6?'READY':'GO!',goT>.6?92:110,120,'#f2c230',12)}
+  g.restore();
+  drawHud();
+  // bark cooldown on button
+  $('cool').style.height=(barkCD/1.1*100)+'%';
+}
+// ---------- audio ----------
+let ac=null,mg=null,sg=null,music=true;try{music=localStorage.panMusic!=='0'}catch(e){}
+$('muteBtn').textContent=music?'♪ MUSIC ON':'♪ MUSIC OFF';
+const hz=n=>440*Math.pow(2,(n-69)/12);
+function audioInit(){
+  if(ac){if(ac.state==='suspended')ac.resume();return}
+  try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return}
+  mg=ac.createGain();mg.gain.value=music?.16:0;mg.connect(ac.destination);
+  sg=ac.createGain();sg.gain.value=.3;sg.connect(ac.destination);
+  noiseBuf=ac.createBuffer(1,ac.sampleRate*.5,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  nextT=ac.currentTime+.08;setInterval(schedule,25);
+}
+let noiseBuf,nextT=0,step=0;
+function tone(type,f,t0,dur,vol,dest,slide){const o=ac.createOscillator(),v=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t0+dur);v.gain.setValueAtTime(0,t0);v.gain.linearRampToValueAtTime(vol,t0+.005);v.gain.exponentialRampToValueAtTime(.0008,t0+dur);o.connect(v);v.connect(dest);o.start(t0);o.stop(t0+dur+.02)}
+function noise(t0,dur,vol,dest,hp){const s=ac.createBufferSource(),v=ac.createGain(),fl=ac.createBiquadFilter();fl.type='highpass';fl.frequency.value=hp||5000;s.buffer=noiseBuf;v.gain.setValueAtTime(vol,t0);v.gain.exponentialRampToValueAtTime(.0008,t0+dur);s.connect(fl);fl.connect(v);v.connect(dest);s.start(t0);s.stop(t0+dur+.02)}
+const _=null;
+const LEAD=[72,76,79,76, 74,77,81,77, 76,79,84,79, 77,74,72,_, 72,76,79,81, 79,76,74,76, 77,76,74,71, 72,_,67,_,
+            79,_,81,79, 77,_,76,74, 76,77,79,_, 72,_,74,_, 81,79,77,76, 74,76,77,79, 76,74,71,74, 72,_,_,_];
+const CH=[48,50,48,53,45,48,43,48, 52,50,48,45,53,50,43,48];
+const SPB=60/150/2;
+function schedule(){
+  if(!ac)return;
+  while(nextT<ac.currentTime+.12){
+    const i=step%LEAD.length,bar=Math.floor(step/8)%CH.length,r=CH[bar];
+    if(state==='play'||state==='title'||state==='end'){
+      const n=LEAD[i];if(n)tone('square',hz(n),nextT,SPB*.9,.32,mg);
+      if(n&&i%2===0)tone('square',hz(n+12),nextT+SPB*.5,SPB*.3,.07,mg);
+      const bn=[r,_,r+7,_,r+12,_,r+7,_][step%8];if(bn)tone('triangle',hz(bn-12),nextT,SPB*1.6,.55,mg);
+      if(step%2===0)noise(nextT,.03,.12,mg,7000);if(step%8===4)noise(nextT,.09,.25,mg,1500);
+    }
+    nextT+=state==='play'&&timeLeft<=10?SPB*.82:SPB;step++;
+  }
+}
+function sfx(k){
+  if(!ac)return;const n=ac.currentTime;
+  if(k==='bark'){noise(n,.12,.7,sg,900);tone('square',520,n,.12,.35,sg,180);tone('square',600,n+.14,.1,.25,sg,200)}
+  else if(k==='pen'){tone('square',hz(84),n,.06,.3,sg);tone('square',hz(88),n+.06,.06,.3,sg);tone('square',hz(91),n+.12,.12,.3,sg);tone('triangle',700,n+.05,.3,.2,sg,520)}
+  else if(k==='tick')tone('square',hz(96),n,.04,.15,sg);
+  else if(k==='go'){tone('square',hz(72),n,.1,.3,sg);tone('square',hz(79),n+.1,.2,.3,sg)}
+  else if(k==='win'){[72,76,79,84,79,84,88].forEach((m,i)=>tone('square',hz(m),n+i*.1,.16,.3,sg))}
+  else if(k==='lose'){[72,71,70,67].forEach((m,i)=>tone('square',hz(m),n+i*.18,.2,.3,sg))}
+}
+// ---------- loop ----------
+let last=performance.now();
+function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);draw();requestAnimationFrame(loop)}
+(document.fonts&&document.fonts.ready||Promise.resolve()).then(()=>{fit();requestAnimationFrame(loop)});fit();
+document.addEventListener('visibilitychange',()=>{if(ac){document.hidden?ac.suspend():ac.resume()}});
+})();
+</script>
+<!-- spacefast:body-end -->
+<!-- /spacefast:body-end -->
+</body>
+</html>
